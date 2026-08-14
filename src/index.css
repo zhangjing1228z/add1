@@ -1,1 +1,208 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "LXGW WenKai TC", "Noto Sans TC", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-num: "Space Grotesk", "Noto Sans TC", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #16111a;
+  color: #f3ece6;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(242, 84, 61, 0.35);
+  color: #fff6f1;
+}
+
+/* 顆粒質感覆蓋層 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 動畫 ---------- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.955);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tickIn {
+  from {
+    opacity: 0.4;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes colonBlink {
+  0%,
+  54% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(18px, -42px, 0) rotate(50deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.09);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(26px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal {
+  opacity: 0;
+  animation: fadeUp 0.8s cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+.pop-in {
+  animation: pop 0.45s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+.tick-in {
+  animation: tickIn 0.3s ease-out both;
+}
+
+.colon-blink {
+  animation: colonBlink 1s linear infinite;
+}
+
+.toast-in {
+  animation: toastIn 0.35s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+/* 漂浮的番茄籽 */
+.seed {
+  position: absolute;
+  width: 7px;
+  height: 11px;
+  border-radius: 62% 38% 55% 45% / 55% 60% 40% 45%;
+  background: currentColor;
+  opacity: 0.16;
+  filter: blur(0.6px);
+  animation: drift 15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  pointer-events: none;
+  transition: background 900ms ease;
+  animation: breathe 10s ease-in-out infinite;
+}
+
+/* 計時圓環 */
+.arc-progress {
+  transition:
+    stroke-dashoffset 1s linear,
+    stroke 600ms ease;
+  filter: drop-shadow(0 0 14px var(--glow));
+}
+
+.arc-track {
+  transition: stroke 600ms ease;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+kbd {
+  font-family: var(--font-num);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom-width: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8ccd4;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent, #f2543d);
+  outline-offset: 2px;
+}
+
+input::placeholder {
+  color: #7c7180;
+}
