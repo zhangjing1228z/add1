@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>云商城 · 前台购物</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="inner container">
+  <a class="logo" href="/customer/shop.html">🛒 云商城</a>
+  <form class="search" id="searchForm">
+    <input id="kw" placeholder="搜索商品，如：耳机">
+    <button type="submit">搜索</button>
+  </form>
+  <div class="nav-links">
+    <span id="userArea">余额：<b id="balance">-</b></span>
+    <a href="javascript:;" onclick="openOrders()">我的订单</a>
+    <a href="javascript:;" onclick="openCart()">🛒 购物车<span class="cart-badge" id="cartCount">0</span></a>
+    <a href="javascript:;" onclick="logout()">退出</a>
+  </div>
+</div></nav>
+
+<div class="container">
+  <div class="cats" id="cats"></div>
+  <div class="grid" id="grid"><div class="empty">加载中…</div></div>
+</div>
+
+<!-- 购物车抽屉 -->
+<div class="drawer-mask" id="mask" onclick="closeCart()"></div>
+<div class="drawer" id="drawer">
+  <header><span>🛒 购物车</span><a href="javascript:;" onclick="closeCart()">✕</a></header>
+  <div class="items" id="cartItems"></div>
+  <footer>
+    <div class="total-row"><span>合计</span><span class="price" id="cartTotal">¥0.00</span></div>
+    <button class="btn" style="width:100%" onclick="checkout()">去结算（账户余额支付）</button>
+  </footer>
+</div>
+
+<!-- 订单弹窗 -->
+<div id="ordersModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:120;overflow:auto">
+  <div style="max-width:680px;margin:60px auto;background:#fff;border-radius:14px;padding:22px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+      <h2 style="font-size:17px">📦 我的订单</h2>
+      <a href="javascript:;" onclick="document.getElementById('ordersModal').style.display='none'">✕ 关闭</a>
+    </div>
+    <div id="ordersBody"></div>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+let ME = null, PRODUCTS = [], CAT = '全部', CART = {}; // CART: {productId: qty}
+
+(async function init() {
+  ME = await api('/api/auth/me').catch(() => null);
+  if (!ME || ME.role !== 'customer') return location.href = '/customer/login.html';
+  document.getElementById('balance').textContent = money(ME.balance);
+  loadCategories(); loadProducts(); renderCart();
+})();
+
+async function loadCategories() {
+  const cats = await api('/api/products/categories');
+  const el = document.getElementById('cats');
+  el.innerHTML = ['全部', ...cats].map(c =>
+    `<div class="cat ${c===CAT?'active':''}" onclick="setCat('${c}')">${c}</div>`).join('');
+}
+function setCat(c) { CAT = c; loadCategories(); loadProducts(); }
+
+document.getElementById('searchForm').onsubmit = e => { e.preventDefault(); loadProducts(); };
+
+async function loadProducts() {
+  const kw = document.getElementById('kw').value.trim();
+  PRODUCTS = await api(`/api/products?keyword=${encodeURIComponent(kw)}&category=${encodeURIComponent(CAT)}`);
+  const g = document.getElementById('grid');
+  if (!PRODUCTS.length) { g.innerHTML = '<div class="empty" style="grid-column:1/-1">没有找到相关商品</div>'; return; }
+  g.innerHTML = PRODUCTS.map(p => `
+    <div class="card">
+      <div class="thumb">${p.emoji}</div>
+      <div class="body">
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pdesc">${esc(p.description)}</div>
+        <div class="pmeta"><span>分类：${esc(p.category)}</span><span>${p.stock>0?('库存 '+p.stock):'缺货'}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="price">${money(p.price)}</span><span class="shop">${esc(p.shop_name)}</span>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn sm" ${p.stock<=0?'disabled':''} onclick="addToCart(${p.id})">加入购物车</button>
+        <button class="btn sm outline" ${p.stock<=0?'disabled':''} onclick="buyNow(${p.id})">立即购买</button>
+      </div>
+    </div>`).join('');
+}
+
+// ---------- 购物车 ----------
+function saveCart() { localStorage.setItem('cart_' + ME.id, JSON.stringify(CART)); }
+function addToCart(id, qty = 1) {
+  const p = PRODUCTS.find(x => x.id === id); if (!p) return;
+  CART[id] = Math.min((CART[id] || 0) + qty, p.stock);
+  saveCart(); renderCart(); toast(`已加入购物车：${p.name}`);
+}
+function changeQty(id, d) {
+  const p = PRODUCTS.find(x => x.id === id);
+  CART[id] = (CART[id] || 0) + d;
+  if (CART[id] <= 0) delete CART[id];
+  else if (p && CART[id] > p.stock) { CART[id] = p.stock; toast('已达库存上限'); }
+  saveCart(); renderCart();
+}
+function removeItem(id) { delete CART[id]; saveCart(); renderCart(); }
+
+function cartEntries() {
+  return Object.entries(CART).map(([id, qty]) => {
+    const p = PRODUCTS.find(x => x.id == id);
+    return p ? { p, qty } : null;
+  }).filter(Boolean);
+}
+
+function renderCart() {
+  const entries = cartEntries();
+  document.getElementById('cartCount').textContent = entries.reduce((s, e) => s + e.qty, 0);
+  const box = document.getElementById('cartItems');
+  if (!entries.length) { box.innerHTML = '<div class="empty">购物车空空如也～</div>'; }
+  else box.innerHTML = entries.map(({ p, qty }) => `
+    <div class="ci">
+      <div class="em">${p.emoji}</div>
+      <div class="nm"><div>${esc(p.name)}</div><div class="price" style="font-size:14px">${money(p.price)}</div></div>
+      <div class="qty">
+        <button onclick="changeQty(${p.id},-1)">−</button><span>${qty}</span><button onclick="changeQty(${p.id},1)">＋</button>
+      </div>
+      <a href="javascript:;" style="color:#e5484d" onclick="removeItem(${p.id})">删除</a>
+    </div>`).join('');
+  document.getElementById('cartTotal').textContent = money(entries.reduce((s, e) => s + e.p.price * e.qty, 0));
+}
+function openCart() { document.getElementById('drawer').classList.add('open'); document.getElementById('mask').style.display = 'block'; }
+function closeCart() { document.getElementById('drawer').classList.remove('open'); document.getElementById('mask').style.display = 'none'; }
+
+// ---------- 下单 ----------
+async function submitOrder(items) {
+  try {
+    const r = await api('/api/orders', { method: 'POST', body: { items } });
+    items.forEach(i => delete CART[i.productId]);
+    saveCart(); renderCart();
+    ME = await api('/api/auth/me');
+    document.getElementById('balance').textContent = money(ME.balance);
+    toast(`🎉 下单成功！订单号 #${r.orderId}`);
+    setTimeout(openOrders, 600);
+  } catch (e) { toast('❌ ' + e.message); }
+}
+function checkout() {
+  const entries = cartEntries();
+  if (!entries.length) return toast('购物车为空');
+  submitOrder(entries.map(({ p, qty }) => ({ productId: p.id, quantity: qty })));
+  closeCart();
+}
+function buyNow(id) { submitOrder([{ productId: id, quantity: 1 }]); }
+
+// ---------- 订单 ----------
+async function openOrders() {
+  document.getElementById('ordersModal').style.display = 'block';
+  const orders = await api('/api/orders/mine');
+  const b = document.getElementById('ordersBody');
+  if (!orders.length) { b.innerHTML = '<div class="empty">暂无订单</div>'; return; }
+  b.innerHTML = orders.map(o => `
+    <div style="border:1px solid #eee;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#888">
+        <span>订单 #${o.id} · ${o.created_at}</span><span class="tag on">${o.status}</span>
+      </div>
+      <div style="margin-top:8px">${o.items.map(i =>
+        `<div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0">
+           <span>${esc(i.product_name)} × ${i.quantity}</span><span>${money(i.price * i.quantity)}</span>
+         </div>`).join('')}</div>
+      <div style="text-align:right;margin-top:8px;font-weight:700">实付：<span class="price">${money(o.total)}</span></div>
+    </div>`).join('');
+}
+
+async function logout() { await api('/api/auth/logout', { method: 'POST' }); location.href = '/customer/login.html'; }
+</script>
+</body>
+</html>

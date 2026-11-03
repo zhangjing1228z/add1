@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商户登录 · 商家后台</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="auth-wrap" style="background:linear-gradient(135deg,#1f6feb,#57a6ff)">
+  <div class="auth-box">
+    <h1>🏪 商家后台</h1>
+    <div class="sub">商户登录 / 注册开店</div>
+    <div class="tabs">
+      <div class="active" id="tabLogin" onclick="switchTab('login')">登录</div>
+      <div id="tabReg" onclick="switchTab('reg')">开店注册</div>
+    </div>
+
+    <form id="loginForm">
+      <div class="field"><label>商户账号</label><input name="username" placeholder="请输入账号" required></div>
+      <div class="field"><label>密码</label><input name="password" type="password" placeholder="请输入密码" required></div>
+      <button class="btn green" style="width:100%">登 录</button>
+    </form>
+
+    <form id="regForm" style="display:none">
+      <div class="field"><label>店铺名称</label><input name="shop_name" placeholder="如：星辰数码屋" required></div>
+      <div class="field"><label>商户账号</label><input name="username" placeholder="设置账号" required></div>
+      <div class="field"><label>密码</label><input name="password" type="password" placeholder="至少6位" required></div>
+      <button class="btn green" style="width:100%">开 店</button>
+    </form>
+
+    <div class="msg" id="msg"></div>
+    <div class="demo-tip">
+      演示商户：<b>merchant1</b>（优选数码店）/ <b>merchant2</b>（生活家居馆），密码均为 <b>123456</b><br>
+      <a href="/">← 返回入口</a> ｜ 客户请前往 <a href="/customer/">前台商城</a>
+    </div>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+api('/api/auth/me').then(u => { if (u && u.role === 'merchant') location.href = '/merchant/dashboard.html'; });
+
+function switchTab(t) {
+  document.getElementById('tabLogin').classList.toggle('active', t === 'login');
+  document.getElementById('tabReg').classList.toggle('active', t === 'reg');
+  document.getElementById('loginForm').style.display = t === 'login' ? '' : 'none';
+  document.getElementById('regForm').style.display = t === 'reg' ? '' : 'none';
+  setMsg('');
+}
+function setMsg(text, ok) {
+  const m = document.getElementById('msg');
+  m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+document.getElementById('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/login', { method: 'POST', body: { username: f.get('username'), password: f.get('password'), role: 'merchant' } });
+    location.href = '/merchant/dashboard.html';
+  } catch (err) { setMsg(err.message); }
+};
+
+document.getElementById('regForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/register-merchant', { method: 'POST', body: {
+      username: f.get('username'), password: f.get('password'), shop_name: f.get('shop_name') } });
+    location.href = '/merchant/dashboard.html';
+  } catch (err) { setMsg(err.message); }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商户后台 · 云商城</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="admin">
+  <aside class="sidebar">
+    <div class="brand">🏪 商家后台</div>
+    <div class="menu-item" style="color:#8fa2c0;font-size:13px;padding-bottom:6px" id="shopLabel">店铺：-</div>
+    <div class="menu-item active" data-view="overview">📊 经营概览</div>
+    <div class="menu-item" data-view="products">📦 商品管理</div>
+    <div class="menu-item" onclick="logout()">🚪 退出登录</div>
+  </aside>
+
+  <main class="main">
+    <!-- ===== 经营概览 ===== -->
+    <section id="view-overview">
+      <div class="stat-cards">
+        <div class="stat"><div class="k">累计销售额</div><div class="v" id="stRevenue">¥0.00</div></div>
+        <div class="stat"><div class="k">售出件数</div><div class="v" id="stUnits">0</div></div>
+        <div class="stat"><div class="k">订单数</div><div class="v" id="stOrders">0</div></div>
+        <div class="stat"><div class="k">账户余额</div><div class="v" id="stBalance">¥0.00</div></div>
+      </div>
+      <div class="panel">
+        <h2>📦 我的商品库存概览</h2>
+        <table>
+          <thead><tr><th>商品</th><th>分类</th><th>价格</th><th>库存</th><th>状态</th></tr></thead>
+          <tbody id="ovBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 商品管理 ===== -->
+    <section id="view-products" style="display:none">
+      <div class="panel">
+        <h2>➕ 商品入库</h2>
+        <form id="addForm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div class="field" style="margin:0"><label>商品名称 *</label><input name="name" placeholder="如：无线蓝牙耳机" required></div>
+          <div class="field" style="margin:0"><label>分类</label>
+            <select name="category">
+              <option>数码</option><option>家居</option><option>服饰</option><option>食品</option><option>美妆</option><option>其他</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0"><label>图标 Emoji</label><input name="emoji" placeholder="🎧（可留空）"></div>
+          <div class="field" style="margin:0"><label>价格 *</label><input name="price" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+          <div class="field" style="margin:0"><label>入库数量 *</label><input name="stock" type="number" min="0" step="1" placeholder="0" required></div>
+          <div class="field" style="margin:0"><label>商品描述</label><input name="description" placeholder="简要描述"></div>
+          <div style="grid-column:1/-1"><button class="btn green" type="submit">确认入库</button></div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>🗂️ 商品列表 / 补货上下架</h2>
+        <table>
+          <thead><tr><th>商品</th><th>分类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 编辑弹窗 -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);overflow:auto">
+  <div style="max-width:520px;margin:60px auto;background:#fff;border-radius:14px;padding:22px">
+    <h2 style="font-size:17px;margin-bottom:16px">✏️ 编辑商品</h2>
+    <form id="editForm">
+      <input type="hidden" name="id">
+      <div class="field"><label>商品名称</label><input name="name" required></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>分类</label>
+          <select name="category"><option>数码</option><option>家居</option><option>服饰</option><option>食品</option><option>美妆</option><option>其他</option></select>
+        </div>
+        <div class="field"><label>图标 Emoji</label><input name="emoji"></div>
+        <div class="field"><label>价格</label><input name="price" type="number" min="0" step="0.01" required></div>
+        <div class="field"><label>库存（改数字即可补货）</label><input name="stock" type="number" min="0" step="1" required></div>
+      </div>
+      <div class="field"><label>描述</label><input name="description"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn green" type="submit">保存修改</button>
+        <button class="btn ghost" type="button" onclick="closeEdit()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+var ME = null, PRODS = [];
+
+(async function init() {
+  ME = await api('/api/auth/me').catch(function() { return null; });
+  if (!ME || ME.role !== 'merchant') { location.href = '/merchant/login.html'; return; }
+  document.getElementById('shopLabel').textContent = '店铺：' + ME.shop_name + '（' + ME.username + '）';
+  switchView('overview');
+})();
+
+// ---------- 视图切换 ----------
+document.querySelectorAll('.menu-item[data-view]').forEach(function(el) {
+  el.onclick = function() { switchView(el.dataset.view, el); };
+});
+function switchView(name, menuEl) {
+  document.getElementById('view-overview').style.display = name === 'overview' ? '' : 'none';
+  document.getElementById('view-products').style.display = name === 'products' ? '' : 'none';
+  document.querySelectorAll('.menu-item[data-view]').forEach(function(m) { m.classList.remove('active'); });
+  var target = menuEl || document.querySelector('.menu-item[data-view="' + name + '"]');
+  if (target) target.classList.add('active');
+  loadOverview(); loadProducts();
+}
+
+async function loadOverview() {
+  var s = await api('/api/orders/shop-stats');
+  document.getElementById('stRevenue').textContent = money(s.revenue);
+  document.getElementById('stUnits').textContent = s.units;
+  document.getElementById('stOrders').textContent = s.orders;
+  document.getElementById('stBalance').textContent = money(s.balance);
+}
+
+async function loadProducts() {
+  PRODS = await api('/api/products/mine');
+  var rows = PRODS.map(function(p) {
+    return '<tr>' +
+      '<td>' + p.emoji + ' ' + esc(p.name) + '</td>' +
+      '<td>' + esc(p.category) + '</td>' +
+      '<td>' + money(p.price) + '</td>' +
+      '<td>' + p.stock + '</td>' +
+      '<td><span class="tag ' + p.status + '">' + (p.status === 'on' ? '在售' : '下架') + '</span></td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn sm outline" onclick="openEdit(' + p.id + ')">编辑</button> ' +
+        '<button class="btn sm ghost" onclick="restock(' + p.id + ')">补货+10</button> ' +
+        '<button class="btn sm" onclick="toggleStatus(' + p.id + ')">' + (p.status === 'on' ? '下架' : '上架') + '</button> ' +
+        '<button class="btn sm danger" onclick="delProduct(' + p.id + ')">删除</button>' +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('prodBody').innerHTML = rows || '<tr><td colspan="6" class="empty">暂无商品，请先入库</td></tr>';
+  document.getElementById('ovBody').innerHTML = PRODS.map(function(p) {
+    return '<tr><td>' + p.emoji + ' ' + esc(p.name) + '</td><td>' + esc(p.category) + '</td><td>' + money(p.price) +
+      '</td><td>' + p.stock + '</td><td><span class="tag ' + p.status + '">' + (p.status === 'on' ? '在售' : '下架') + '</span></td></tr>';
+  }).join('') || '<tr><td colspan="5" class="empty">暂无商品</td></tr>';
+}
+
+// ---------- 商品入库 ----------
+document.getElementById('addForm').onsubmit = async function(e) {
+  e.preventDefault();
+  var f = new FormData(e.target);
+  try {
+    await api('/api/products', { method: 'POST', body: Object.fromEntries(f) });
+    toast('✅ 商品入库成功');
+    e.target.reset();
+    loadProducts(); loadOverview();
+  } catch (err) { toast('❌ ' + err.message); }
+};
+
+async function restock(id) {
+  var p = PRODS.find(function(x) { return x.id === id; });
+  try {
+    await api('/api/products/' + id, { method: 'PUT', body: { stock: p.stock + 10 } });
+    toast('已为「' + p.name + '」补货 10 件');
+    loadProducts(); loadOverview();
+  } catch (e) { toast('❌ ' + e.message); }
+}
+async function toggleStatus(id) {
+  var r = await api('/api/products/' + id + '/toggle', { method: 'PATCH' });
+  toast(r.status === 'on' ? '已上架' : '已下架');
+  loadProducts(); loadOverview();
+}
+async function delProduct(id) {
+  if (!confirm('确定删除该商品？')) return;
+  var r = await api('/api/products/' + id, { method: 'DELETE' });
+  toast(r.offlined ? '该商品有历史订单，已自动下架' : '已删除');
+  loadProducts(); loadOverview();
+}
+
+// ---------- 编辑 ----------
+function openEdit(id) {
+  var p = PRODS.find(function(x) { return x.id === id; });
+  var f = document.getElementById('editForm');
+  ['id','name','category','price','stock','description','emoji'].forEach(function(k) { f[k].value = p[k]; });
+  document.getElementById('editModal').style.display = 'block';
+}
+function closeEdit() { document.getElementById('editModal').style.display = 'none'; }
+document.getElementById('editModal').addEventListener('click', function(e) { if (e.target.id === 'editModal') closeEdit(); });
+document.getElementById('editForm').onsubmit = async function(e) {
+  e.preventDefault();
+  var f = new FormData(e.target);
+  try {
+    await api('/api/products/' + f.get('id'), { method: 'PUT', body: Object.fromEntries(f) });
+    toast('已保存');
+    closeEdit();
+    loadProducts(); loadOverview();
+  } catch (err) { toast('❌ ' + err.message); }
+};
+
+async function logout() {
+  await api('/api/auth/logout', { method: 'POST' });
+  location.href = '/merchant/login.html';
+}
+</script>
+</body>
+</html>

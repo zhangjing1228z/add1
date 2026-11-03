@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>客户登录 · 云商城</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-box">
+    <h1>🛍️ 云商城</h1>
+    <div class="sub">客户登录 / 注册</div>
+    <div class="tabs">
+      <div class="active" id="tabLogin" onclick="switchTab('login')">登录</div>
+      <div id="tabReg" onclick="switchTab('reg')">注册</div>
+    </div>
+
+    <form id="loginForm">
+      <div class="field"><label>用户名</label><input name="username" placeholder="请输入用户名" required></div>
+      <div class="field"><label>密码</label><input name="password" type="password" placeholder="请输入密码" required></div>
+      <button class="btn" style="width:100%">登 录</button>
+    </form>
+
+    <form id="regForm" style="display:none">
+      <div class="field"><label>用户名</label><input name="username" placeholder="设置用户名" required></div>
+      <div class="field"><label>密码</label><input name="password" type="password" placeholder="至少6位" required></div>
+      <button class="btn" style="width:100%">注 册（赠送 ¥1000 体验余额）</button>
+    </form>
+
+    <div class="msg" id="msg"></div>
+    <div class="demo-tip">
+      演示账号：<b>customer1</b> / <b>alice</b>，密码均为 <b>123456</b><br>
+      <a href="/">← 返回入口</a> ｜ 商户请前往 <a href="/merchant/">商户后台</a>
+    </div>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+// 已登录则直接进入商城
+api('/api/auth/me').then(u => { if (u && u.role === 'customer') location.href = '/customer/shop.html'; });
+
+function switchTab(t) {
+  document.getElementById('tabLogin').classList.toggle('active', t === 'login');
+  document.getElementById('tabReg').classList.toggle('active', t === 'reg');
+  document.getElementById('loginForm').style.display = t === 'login' ? '' : 'none';
+  document.getElementById('regForm').style.display = t === 'reg' ? '' : 'none';
+  setMsg('');
+}
+function setMsg(text, ok) {
+  const m = document.getElementById('msg');
+  m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+document.getElementById('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/login', { method: 'POST', body: { username: f.get('username'), password: f.get('password'), role: 'customer' } });
+    location.href = '/customer/shop.html';
+  } catch (err) { setMsg(err.message); }
+};
+
+document.getElementById('regForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/register', { method: 'POST', body: { username: f.get('username'), password: f.get('password') } });
+    location.href = '/customer/shop.html';
+  } catch (err) { setMsg(err.message); }
+};
+</script>
+</body>
+</html>

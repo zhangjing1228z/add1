@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>云商城 · 电商平台</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.entrance{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#ff5000,#ff8a3d);gap:34px}
+.entrance h1{color:#fff;font-size:36px;text-shadow:0 2px 10px rgba(0,0,0,.15)}
+.entrance .cards{display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+.ecard{background:#fff;border-radius:18px;padding:36px 40px;width:300px;text-align:center;cursor:pointer;transition:.2s;box-shadow:0 15px 40px rgba(0,0,0,.18)}
+.ecard:hover{transform:translateY(-6px)}
+.ecard .icon{font-size:56px}
+.ecard h2{margin:14px 0 8px;font-size:20px}
+.ecard p{color:#888;font-size:13px;line-height:1.6;margin-bottom:18px}
+</style>
+</head>
+<body>
+<div class="entrance">
+  <h1>🛒 云商城</h1>
+  <div class="cards">
+    <div class="ecard" onclick="location.href='/customer/'">
+      <div class="icon">🛍️</div>
+      <h2>前台购物</h2>
+      <p>客户登录 / 注册<br>浏览选品 · 购物车 · 下单购买</p>
+      <button class="btn">进入商城</button>
+    </div>
+    <div class="ecard" onclick="location.href='/merchant/'">
+      <div class="icon">🏪</div>
+      <h2>商户后台</h2>
+      <p>商户登录 / 开店<br>商品入库 · 库存管理 · 销售统计</p>
+      <button class="btn green">进入后台</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
